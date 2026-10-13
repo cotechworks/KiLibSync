@@ -31,6 +31,6 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Build completed: "%~dp0build\KiLibSync.exe"
+echo Build completed: "%~dp0build\kilibsync.dist\KiLibSync.exe"
 pause
 exit /b 0

@@ -5,6 +5,7 @@ import queue
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import tkinter as tk
 from datetime import datetime
@@ -14,9 +15,10 @@ from urllib.parse import urlparse
 
 
 def configuration_path():
-    # Nuitka supplies the outer executable directory, including in onefile mode.
+    # argv[0] identifies the launched exe in both Nuitka standalone and onefile.
+    # containing_dir can instead identify the parent of the standalone .dist folder.
     compiled = globals().get('__compiled__')
-    directory = Path(compiled.containing_dir) if compiled is not None else Path(__file__).resolve().parent
+    directory = Path(sys.argv[0]).resolve().parent if compiled is not None else Path(__file__).resolve().parent
     return directory.resolve() / 'repositories.json'
 
 
@@ -102,7 +104,7 @@ class App:
         frame = ttk.Frame(root, padding=(12, 0))
         frame.pack(fill='both', expand=True)
         self.table = ttk.Treeview(frame, columns=('name', 'path', 'date'), show='headings', selectmode='extended')
-        for column, label, width in [('name', 'リポジトリ名', 180), ('path', 'ローカルリポジトリのパス', 500), ('date', '最後にプルした日時', 220)]:
+        for column, label, width in [('name', 'リポジトリ名', 180), ('path', 'ローカルリポジトリのパス', 500), ('date', '最後に更新した日時', 220)]:
             self.table.heading(column, text=label)
             self.table.column(column, width=width, minwidth=100)
         scroll = ttk.Scrollbar(frame, orient='vertical', command=self.table.yview)
@@ -214,7 +216,7 @@ class App:
                     path.set(parent)
         ttk.Button(body, text='参照…', command=browse).grid(row=3, column=1, padx=(8, 0))
         help_text = ('名前はURLから自動取得します。変更先にはURLと一致する既存リポジトリを指定してください。\n'
-                     'ファイルの移動やoriginの変更は行いません。URLまたはパスの変更時は最終プル日時をリセットします。'
+                     'ファイルの移動やoriginの変更は行いません。URLまたはパスの変更時は最終更新日時をリセットします。'
                      if editing else '既存リポジトリも登録できます。新規クローン先は空のフォルダーを指定してください。')
         ttk.Label(body, text=help_text).grid(row=4, column=0, columnspan=2, pady=8)
         def submit():
@@ -280,7 +282,7 @@ class App:
         def work():
             success = 0
             for row in rows:
-                self.events.put(('log', f"{row['name']}: プル中…"))
+                self.events.put(('log', f"{row['name']}: 更新中…"))
                 try:
                     check_repository(row['path'], row['url'])
                     output = git('pull', '--ff-only', cwd=row['path'])

@@ -11,15 +11,21 @@ from kilibsync import App, check_repository, configuration_path, git, repository
 
 
 class RepositoryTests(unittest.TestCase):
-    def test_configuration_path_for_script_and_onefile(self):
+    def test_configuration_path_for_script_standalone_and_onefile(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             with patch('kilibsync.__file__', str(root / 'kilibsync.py')), patch('kilibsync.__compiled__', None, create=True):
                 self.assertEqual(configuration_path(), root.resolve() / 'repositories.json')
             # Onefile's __file__ points to extracted code, not the outer exe.
             with patch('kilibsync.__file__', str(root / 'extracted' / 'kilibsync.py')), patch(
-                    'kilibsync.__compiled__', SimpleNamespace(containing_dir=str(root)), create=True):
+                    'kilibsync.__compiled__', SimpleNamespace(containing_dir=str(root)), create=True), patch(
+                    'kilibsync.sys.argv', [str(root / 'KiLibSync.exe')]):
                 self.assertEqual(configuration_path(), root.resolve() / 'repositories.json')
+            dist = root / 'kilibsync.dist'
+            with patch('kilibsync.__file__', str(dist / 'kilibsync.py')), patch(
+                    'kilibsync.__compiled__', SimpleNamespace(containing_dir=str(root)), create=True), patch(
+                    'kilibsync.sys.argv', [str(dist / 'KiLibSync.exe')]):
+                self.assertEqual(configuration_path(), dist.resolve() / 'repositories.json')
 
     def test_edit_dialog_saves_and_preserves_data_on_failure(self):
         try:
