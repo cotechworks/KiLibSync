@@ -88,7 +88,7 @@ class App:
         toolbar = ttk.Frame(root, padding=12)
         toolbar.pack(fill='x')
         self.buttons = []
-        for label, action in [('ライブラリを追加', self.add), ('選択した登録を削除', self.remove), ('すべてプル', self.pull_all)]:
+        for label, action in [('ライブラリを追加', self.add), ('選択した登録を削除', self.remove)]:
             button = ttk.Button(toolbar, text=label, command=action)
             button.pack(side='left', padx=(0, 8))
             self.buttons.append(button)
@@ -106,6 +106,11 @@ class App:
         horizontal.grid(row=1, column=0, sticky='ew')
         frame.rowconfigure(0, weight=1)
         frame.columnconfigure(0, weight=1)
+        update_bar = ttk.Frame(root, padding=(12, 8, 12, 0))
+        update_bar.pack(fill='x')
+        update_button = ttk.Button(update_bar, text='すべて更新', command=self.pull_all)
+        update_button.pack(side='left')
+        self.buttons.append(update_button)
         self.status = tk.StringVar(value='ライブラリを追加して更新を開始してください。')
         ttk.Label(root, textvariable=self.status, padding=12).pack(fill='x')
         self.log = tk.Text(root, height=7, state='disabled', wrap='word')
