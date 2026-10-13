@@ -30,7 +30,9 @@ python kilibsync.py
 エラーが発生しても他のリポジトリの更新を続けます。各Gitコマンドのタイムアウトは5分です。
 非公開リポジトリでは、事前にGitの認証やSSH鍵を設定してください。GUIから認証情報を入力する機能はありません。
 
-登録情報はWindowsでは `%LOCALAPPDATA%\KiLibSync\repositories.json` に保存します。
+登録情報はexeと同じフォルダーの `repositories.json` に保存します。
+Pythonで起動する場合は `kilibsync.py` と同じフォルダーに保存します。
+既存の登録情報を引き継ぐ場合は `%LOCALAPPDATA%\KiLibSync\repositories.json` を新しい保存先へコピーしてください。
 KiCadのライブラリテーブルへの登録は、このツールとは別にKiCadで行ってください。
 
 ## 検証

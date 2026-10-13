@@ -13,7 +13,14 @@ from tkinter import filedialog, messagebox, ttk
 from urllib.parse import urlparse
 
 
-CONFIG = Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'KiLibSync' / 'repositories.json'
+def configuration_path():
+    # Nuitka supplies the outer executable directory, including in onefile mode.
+    compiled = globals().get('__compiled__')
+    directory = Path(compiled.containing_dir) if compiled is not None else Path(__file__).resolve().parent
+    return directory.resolve() / 'repositories.json'
+
+
+CONFIG = configuration_path()
 
 
 def repository_name(url):
