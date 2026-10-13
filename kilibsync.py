@@ -88,7 +88,7 @@ class App:
         toolbar = ttk.Frame(root, padding=12)
         toolbar.pack(fill='x')
         self.buttons = []
-        for label, action in [('ライブラリを追加', self.add), ('選択した登録を削除', self.remove)]:
+        for label, action in [('ライブラリを追加', self.add), ('選択した登録を編集', self.edit), ('選択した登録を削除', self.remove)]:
             button = ttk.Button(toolbar, text=label, command=action)
             button.pack(side='left', padx=(0, 8))
             self.buttons.append(button)
@@ -166,27 +166,50 @@ class App:
         self.root.after(100, self.poll)
 
     def add(self):
+        self.repository_dialog()
+
+    def edit(self):
+        if self.busy:
+            return
+        selected = self.table.selection()
+        if len(selected) != 1:
+            messagebox.showinfo('登録の編集', '編集するライブラリを1件選択してください。')
+            return
+        self.repository_dialog(int(selected[0]))
+
+    def repository_dialog(self, index=None):
+        if self.busy:
+            return
+        editing = index is not None
+        original = self.rows[index] if editing else None
         dialog = tk.Toplevel(self.root)
-        dialog.title('ライブラリを追加')
+        dialog.title('登録を編集' if editing else 'ライブラリを追加')
         dialog.transient(self.root)
         dialog.grab_set()
         body = ttk.Frame(dialog, padding=16)
         body.pack(fill='both', expand=True)
-        url, path = tk.StringVar(), tk.StringVar()
+        url = tk.StringVar(value=original['url'] if editing else '')
+        path = tk.StringVar(value=original['path'] if editing else '')
         ttk.Label(body, text='GitHubリポジトリURL').grid(row=0, column=0, sticky='w')
         entry = ttk.Entry(body, textvariable=url, width=65)
         entry.grid(row=1, column=0, columnspan=2, sticky='ew', pady=(4, 12))
         ttk.Label(body, text='ローカルリポジトリのパス（クローン先のフォルダー）').grid(row=2, column=0, sticky='w')
         ttk.Entry(body, textvariable=path, width=55).grid(row=3, column=0, sticky='ew', pady=4)
         def browse():
-            parent = filedialog.askdirectory(parent=dialog, title='ライブラリの保存先となる親フォルダーを選択')
+            parent = filedialog.askdirectory(parent=dialog, title='既存リポジトリのフォルダーを選択' if editing else 'ライブラリの保存先となる親フォルダーを選択')
             if parent:
+                if editing:
+                    path.set(parent)
+                    return
                 try:
                     path.set(str(Path(parent) / repository_name(url.get())))
                 except ValueError:
                     path.set(parent)
         ttk.Button(body, text='参照…', command=browse).grid(row=3, column=1, padx=(8, 0))
-        ttk.Label(body, text='既存リポジトリも登録できます。新規クローン先は空のフォルダーを指定してください。').grid(row=4, column=0, columnspan=2, pady=8)
+        help_text = ('名前はURLから自動取得します。変更先にはURLと一致する既存リポジトリを指定してください。\n'
+                     'ファイルの移動やoriginの変更は行いません。URLまたはパスの変更時は最終プル日時をリセットします。'
+                     if editing else '既存リポジトリも登録できます。新規クローン先は空のフォルダーを指定してください。')
+        ttk.Label(body, text=help_text).grid(row=4, column=0, columnspan=2, pady=8)
         def submit():
             try:
                 remote = url.get().strip().rstrip('/')
@@ -194,28 +217,36 @@ class App:
                 if not path.get().strip():
                     raise ValueError('ローカルパスを指定してください。')
                 target = Path(path.get().strip()).expanduser().resolve()
-                if any(Path(row['path']).resolve() == target for row in self.rows):
+                if any(Path(row['path']).resolve() == target for row_index, row in enumerate(self.rows) if row_index != index):
                     raise ValueError('このローカルパスは登録済みです。')
                 if target.exists() and not target.is_dir():
                     raise ValueError('ローカルパスにはフォルダーを指定してください。')
+                if editing and not target.is_dir():
+                    raise ValueError('編集時は既存のローカルリポジトリを指定してください。')
             except Exception as exc:
                 messagebox.showerror('入力エラー', str(exc), parent=dialog)
                 return
             dialog.destroy()
             rows = [dict(row) for row in self.rows]
             def work():
-                self.events.put(('log', f'{name}: 登録処理中…'))
-                if target.exists() and any(target.iterdir()):
+                self.events.put(('log', f'{name}: 登録の保存中…'))
+                if editing or (target.exists() and any(target.iterdir())):
                     check_repository(target, remote)
                 else:
                     target.parent.mkdir(parents=True, exist_ok=True)
                     git('clone', '--', remote, str(target))
-                rows.append(dict(name=name, url=remote, path=str(target), last_pull=''))
+                updated = dict(name=name, url=remote, path=str(target), last_pull='')
+                if editing:
+                    if remote == original['url'] and target == Path(original['path']).resolve():
+                        updated['last_pull'] = original['last_pull']
+                    rows[index] = updated
+                else:
+                    rows.append(updated)
                 save_repositories(rows)
                 self.events.put(('rows', rows))
-                self.events.put(('log', f'{name}: 登録しました。'))
+                self.events.put(('log', f'{name}: 登録を保存しました。'))
             self.run(work)
-        ttk.Button(body, text='追加', command=submit).grid(row=5, column=1, sticky='e')
+        ttk.Button(body, text='保存' if editing else '追加', command=submit).grid(row=5, column=1, sticky='e')
         entry.focus_set()
 
     def remove(self):
